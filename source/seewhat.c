@@ -45,12 +45,7 @@ FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
     
     for(int i = 0; i < output->counter.data; ++i)
     {
-        getAtag(input + (sizeof(TAG) * i) + sizeof(TWO_BYTES), (output->tag_head + i));
-        if((*(output->tag_head + i)).id.data == 255 
-        || (*(output->tag_head + i)).id.data == 256 
-        || (*(output->tag_head + i)).id.data == 257 
-        || (*(output->tag_head + i)).id.data == 258 
-        || (*(output->tag_head + i)).id.data == 273);
+        getAtag(input + (TAG_SIZE * i) + sizeof(TWO_BYTES), (output->tag_head + i));
         {
             printf("|\t\t|%d\t|\tTag ID\t\t|\n",  (*(output->tag_head + i)).id.data);
             printf("|\t\t|%d\t|\tData Type\t|\n", (*(output->tag_head + i)).type.data);
@@ -60,7 +55,6 @@ FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
             sleep(1);        
         }
     }
-
     free(output->tag_head);
 }
 
@@ -71,8 +65,11 @@ int getAtag(const string const input, TAG * next_node)
 {
     next_node->id = get_two(input);
     next_node->type = get_two(input + sizeof(TWO_BYTES));
-    next_node->count = get_four(input + sizeof(FOUR_BYTES));
-    next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
+    next_node->count = get_four(input + sizeof(FOUR_BYTES));    
+    if(next_node->type.data < 5 && next_node->type.data != 2 && next_node->count.data == 1)
+        next_node->offset.data = get_two(input + (2 * sizeof(FOUR_BYTES))).data;
+    else    
+        next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
     return 0;
 }
 
@@ -99,7 +96,6 @@ TWO_BYTES get_two(const string const order_reader)
         default:
             break;
     }
-    printf("%d | 0: %x, 1: %x\n", ret_val.data, ret_val.field[0], ret_val.field[1]);
     return ret_val;
 }
 
@@ -124,10 +120,8 @@ FOUR_BYTES get_four(const string const order_reader)
                 break;
             default:
                 break;
-        }
-        
+        }   
     }
-    printf("%x\n", ret_val.data);
     
     return ret_val;
 }
