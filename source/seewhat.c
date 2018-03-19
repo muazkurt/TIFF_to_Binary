@@ -6,153 +6,128 @@ string get_all(int fp)
         perror("Error to get filesize");
     else
     {
-        file_info = (string) malloc(sizeof(ONE_BYTE) * (file_size + 1));
-        for(int i = 0; read(fp, (file_info + i), sizeof(ONE_BYTE)); ++i)
-        *(file_info + file_size + 1) = 0;
+        file_info = (string) malloc(sizeof(ONE_BYTE) * file_size);
+        for(int i = 0; read(fp, (file_info + i), sizeof(ONE_BYTE)); ++i);
     }
     return file_info;
 }
 
 
-FOUR_BYTES get_firstIFD(string input)
+FOUR_BYTES get_firstIFD(const string const input)
 {
-    FOUR_BYTES fdoffset = 0;
-    unsigned short ver = 0;
-    TWO_BYTES counter = 0;
+    FOUR_BYTES fdoffset;
     if((*input == *(input + 1)) && (*input == 'M'))
-        byte_order = 1;
-    //0000 0000 0000 0000 | 0010 1010 0000 0000
-    //-----------------------------------------
-    //0010 1010 0000 0000 >> 8 * 1
-    //-----------------------------------------
-    //0000 0000 0010 1010 (42)
-    ver = ((ver | *(input + 2)) >> (8 * byte_order));
-    ver |= *(input + 3);
-
-    if(ver == 42)
-        for(counter = 4; counter < 8; ++counter)
-        {
-            fdoffset |= *(input + counter);            
-            if(counter < 7)
-                fdoffset >>= (8 * byte_order);
-        }
-    else fdoffset = -1;
-    printf("%d\n", fdoffset);
+        byte_order = 8;
+    //CHECK FOR IF VERSION == 42
+    if(get_two(input + 2 * sizeof(ONE_BYTE)).data == 42)
+        fdoffset = get_four(input + sizeof(FOUR_BYTES));
+    else fdoffset.data = -1;
+    
     return fdoffset;
 }
 
 
-
-
-
-
-void read_charly(int fd)
+TIFF parse(string input)
 {
-    double search;
-    int counter = 0;
-    char id;
-    unsigned short version = 0;
-    int fimg_dir = 0;
-    unsigned short tag_c = 0;
-    HEADER _head;
-    IMAGE_FILE_DIRECTORY _filedir;
-    int temp = 0;
-
-    printf("|\t\t\tFORMAT\t\t\t|");
-    printf("\n-------------------------------------------------\n");
-    printf("|\t\tHead\t\t\t\t|");
-    printf("\n-------------------------------------------------\n");
-    printf("|Offset\t|Value\t|\tInfo\t\t\t|");
-    printf("\n-------------------------------------------------\n");
-    
-    if(!get_header(fd, &_head) || !lseek(fd, _head.IFD_offset, SEEK_SET))
-        perror("Failed to get first informations");
-    else 
+    IMAGE_FILE_DIRECTORY boii;
+    if((boii.this_offset = get_firstIFD(input)).data == -1);
+    else
     {
-        printf("|%c%c\t|%d\t|\t%d\t\t\t|", _head.id_one, _head.id_two, _head.version, _head.IFD_offset);
-        printf("\n-------------------------------------------------\n");
+        get_tags(input + boii.this_offset.data, &boii);
+    }
+}
+
+FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
+{
     
-  /*  if(get_ifd(fd, &_filedir))
-        printf("|\t\tIFD\t\t\t\t|");
-        printf("\n-------------------------------------------------\n");
-        printf("|Offset\t\t|Value\t|\tInfo\t\t|");
-        printf("\n-------------------------------------------------\n");
-        printf("|%d..%d\t\t|%d\t|\tTagCounter\t|", _head.IFD_offset, counter, _filedir.counter);
-        printf("\n-------------------------------------------------\n");
-        for(int i = 0; i < _filedir.counter; ++i)
+    output->counter = get_two(input);
+    output->tag_head = (TAG *) malloc(sizeof(TAG) * output->counter.data);
+    
+    for(int i = 0; i < output->counter.data; ++i)
+    {
+        getAtag(input + (sizeof(TAG) * i) + sizeof(TWO_BYTES), (output->tag_head + i));
+        if((*(output->tag_head + i)).id.data == 255 
+        || (*(output->tag_head + i)).id.data == 256 
+        || (*(output->tag_head + i)).id.data == 257 
+        || (*(output->tag_head + i)).id.data == 258 
+        || (*(output->tag_head + i)).id.data == 273);
         {
-            printf("|\t\tTAG %d\t\t\t\t|", i);
+            printf("|\t\t|%d\t|\tTag ID\t\t|\n",  (*(output->tag_head + i)).id.data);
+            printf("|\t\t|%d\t|\tData Type\t|\n", (*(output->tag_head + i)).type.data);
+            printf("|\t\t|%d\t|\tDaya Count\t|\n",(*(output->tag_head + i)).count.data);
+            printf("|\t\t|%d\t|\tData Offset\t|", (*(output->tag_head + i)).offset.data);
             printf("\n-------------------------------------------------\n");
-            printf("|Offset\t\t|Value\t| \tInfo\t\t|");
-            printf("\n-------------------------------------------------\n");
-            printf("|\t\t|%d\t|\tTag ID\t\t|\n",  _filedir.tag_head[i].id);
-            printf("|\t\t|%d\t|\tData Type\t|\n", _filedir.tag_head[i].type);
-            printf("|\t\t|%d\t|\tDaya Count\t|\n",_filedir.tag_head[i].count);
-            printf("|\t\t|%d\t|\tData Offset\t|", _filedir.tag_head[i].offset);
-            printf("\n-------------------------------------------------\n");
-        }*/
+            sleep(1);        
+        }
     }
-    return;
+
+    free(output->tag_head);
 }
 
 
-int get_header(int fd, HEADER * updater)
+
+
+int getAtag(const string const input, TAG * next_node)
 {
-    int ret_val = 0;
-    if((read(fd, updater, sizeof(HEADER))) < sizeof(HEADER))
-        perror("There is an error in file");
-    else
+    next_node->id = get_two(input);
+    next_node->type = get_two(input + sizeof(TWO_BYTES));
+    next_node->count = get_four(input + sizeof(FOUR_BYTES));
+    next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
+    return 0;
+}
+
+
+
+//0000 0000 0000 0000 | 0010 1010 0000 0000
+//-----------------------------------------
+//0010 1010 0000 0000 >> 8 * 1
+//-----------------------------------------
+//0000 0000 0010 1010 (42)
+TWO_BYTES get_two(const string const order_reader)
+{
+    TWO_BYTES ret_val;
+    switch (byte_order)
     {
-        if(updater->id_one == 'M') byte_order = 8;
-        update_bytes(updater);
-        ret_val = 8;
-        if(updater->version != 42)
-            ret_val = -1;
+        case 0:
+            ret_val.field[0] = *(order_reader);
+            ret_val.field[1] = *(order_reader + 1);
+            break;
+        case 8:
+            ret_val.field[0] = *(order_reader + 1);
+            ret_val.field[1] = *(order_reader);
+            break;
+        default:
+            break;
     }
+    printf("%d | 0: %x, 1: %x\n", ret_val.data, ret_val.field[0], ret_val.field[1]);
     return ret_val;
 }
 
-
-int get_ifd(int fd, IMAGE_FILE_DIRECTORY * updater)
+FOUR_BYTES get_four(const string const order_reader)
 {
-    int ret_val = 0;
-    if((read(fd, &(updater->counter), sizeof(TWO_BYTES)) < sizeof(TWO_BYTES)) && !(ret_val = -1))
-        perror("Filedir Tags can't be readen");
-    else if((get_allTags(fd, updater) < 0) && !(ret_val = -1))
-        perror("Failed to get Tags");
-    else if((read(fd, &(updater->next_ifd), sizeof(FOUR_BYTES)) < 0) && !(ret_val = -1))
-        perror("Failed to get next ifd's offset");
-    else
-        ret_val = sizeof(TWO_BYTES) + (updater->counter * TAG_SIZE) + sizeof(FOUR_BYTES);
-    return ret_val;
-}
-
-
-int get_allTags(int fd, IMAGE_FILE_DIRECTORY * updater)
-{
-    int ret_val = 0;
-    if(updater->counter < 0 && (ret_val = -1))
-        perror("There is no tag count");
-    else
+    FOUR_BYTES ret_val;
+    TWO_BYTES temp;
+    for(int i = 0; i < 2; ++i)
     {
-        updater->tag_head = (TAG *) malloc(TAG_SIZE * updater->counter);
-        for(int i = 0; i < updater->counter; ++i)
-            ret_val += getAtag(fd, &(updater->tag_head)[i]);
+        temp = get_two(order_reader + (sizeof(TWO_BYTES) * i));
+        switch(byte_order)
+        {
+            case 0:
+            // 0 - 0, 1 - 1 : 2 - 2, 3 - 3
+                *(ret_val.field + 2 * i) = *(temp.field);
+                *(ret_val.field + 2 * i + 1) = *(temp.field + 1);
+                break;
+            // 2 - 1, 3 - 0 : 0 - 3, 1 - 2
+            case 8:
+                *(ret_val.field + 2 - 2 * i) = *(temp.field);
+                *(ret_val.field + 3 - 2 * i) = *(temp.field + 1);
+                break;
+            default:
+                break;
+        }
+        
     }
+    printf("%x\n", ret_val.data);
+    
     return ret_val;
-}
-
-
-int getAtag(int fd, TAG * next_node)
-{
-    int ret_val = 0;
-    if((ret_val = read(fd, next_node, TAG_SIZE) < 0) && !(ret_val = -1))
-        perror("Tag can't be readen");
-    return ret_val;
-}
-
-void update_bytes(HEADER * updated)
-{
-    updated->version >>= byte_order; 
-    updated->IFD_offset >>= ((sizeof(FOUR_BYTES) - 1) * byte_order);
 }

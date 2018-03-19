@@ -31,9 +31,23 @@ typedef char * string;
 
 
 typedef char ONE_BYTE;
-typedef unsigned short TWO_BYTES;
-typedef unsigned int FOUR_BYTES;
-typedef unsigned long long EIGHT_BYTES;
+
+typedef union twoB
+{
+    unsigned short data;
+    ONE_BYTE field [2];
+} TWO_BYTES;
+typedef union fourB
+{
+    unsigned int data;
+    ONE_BYTE field [4];
+} FOUR_BYTES;
+
+typedef union eightB
+{
+    unsigned long long data;
+    ONE_BYTE field [8];
+} EIGHT_BYTES;
 
 typedef struct tiff_head
 {
@@ -53,9 +67,10 @@ typedef struct ifd_tag
 
 typedef struct tiff_ifd
 {
+    FOUR_BYTES this_offset;
     TWO_BYTES counter;
     TAG * tag_head;
-    FOUR_BYTES next_ifd;
+    FOUR_BYTES next_offset;
 } IMAGE_FILE_DIRECTORY;
 
 typedef struct tiff
@@ -68,7 +83,7 @@ typedef struct tiff
 
 /**
  * 0 for read in order of II
- * 1 for read in order of MM
+ * 8 for read in order of MM
  **/
 static char byte_order = 0;
 static off_t file_size = 0;
@@ -79,29 +94,23 @@ static off_t file_size = 0;
  **/
 string get_all(int fp);
 
+TIFF parse(const string const input);
 
-TIFF parse(string input);
+FOUR_BYTES get_firstIFD(const string const input);
 
-FOUR_BYTES get_firstIFD(string input);
-
-
-
-
-
-
-void read_charly(int);
+/**
+ * return value is 0 or another ifd's offset.
+ **/
+FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output);
 
 
-
-void update_bytes(HEADER * updated);
+int getAtag(string, TAG *);
 
 
 
-int get_header(int, HEADER *);
 
-int get_ifd(int, IMAGE_FILE_DIRECTORY *);
+TWO_BYTES get_two(const string const order_reader);
 
-int get_allTags(int, IMAGE_FILE_DIRECTORY *);
+FOUR_BYTES get_four(const string const order_reader);
 
-int getAtag(int, TAG *);
 
