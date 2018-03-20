@@ -20,6 +20,7 @@ typedef union twoB
     unsigned short data;
     ONE_BYTE field [2];
 } TWO_BYTES;
+
 typedef union fourB
 {
     unsigned int data;

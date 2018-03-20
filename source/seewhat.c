@@ -58,18 +58,70 @@ FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
     free(output->tag_head);
 }
 
+int parse_tag(IMAGE_FILE_DIRECTORY * input, TIFF * output)
+{
+    for(int i = 0; i < input->counter.data; ++i)
+    switch(input->counter.data)
+    {
+    case IMAGEWIDTH:
 
+    case IMAGELENGTH:
 
+    case COMPRESSION:
 
+    case PhotometricInterpretation:
+
+    case StripOffsets:
+
+    case StripByteCounts:
+
+    case XResolution:
+
+    case YResolution:
+
+    case ResolutionUnit:
+
+    default:
+        perror("Unknown tag ID");
+        break;
+    }
+}
+/*
+int get_value(const string const input, const TAG * const search, void * const output)
+{
+    switch(search->type.data)
+    {
+        
+    }
+    return 0;
+}
+
+*/
 int getAtag(const string const input, TAG * next_node)
 {
-    next_node->id = get_two(input);
-    next_node->type = get_two(input + sizeof(TWO_BYTES));
-    next_node->count = get_four(input + sizeof(FOUR_BYTES));    
-    if(next_node->type.data < 5 && next_node->type.data != 2 && next_node->count.data == 1)
-        next_node->offset.data = get_two(input + (2 * sizeof(FOUR_BYTES))).data;
-    else    
+    int ret_val = 0;
+    next_node->id = get_two(input);    
+    next_node->count = get_four(input + sizeof(FOUR_BYTES));
+    //CHECK THE TYPE OF VALUE
+    switch((next_node->type = get_two(input + sizeof(TWO_BYTES))).data)
+    {
+    case BYTE:
+        break;
+    case SHORT:
+    case LONG:
+        //CHECK THE COUNT OF VALUE
+        if(next_node->count.data == 1)
+            next_node->offset.data = get_two(input + (2 * sizeof(FOUR_BYTES))).data;
+        else    
+            next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
+        break;
+    case RATIONAL:
         next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
+        break;
+    default:
+        perror("Unexpected Type");
+        break;
+    }
     return 0;
 }
 
