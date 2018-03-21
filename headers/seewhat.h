@@ -11,6 +11,13 @@
 
 typedef char * string;
 
+struct bps
+{
+    FOUR_BYTES count;
+    FOUR_BYTES offset_p;
+};
+
+
 
 
 typedef char ONE_BYTE;
@@ -46,14 +53,25 @@ typedef struct ifd_tag
     TWO_BYTES id;
     TWO_BYTES type;
     FOUR_BYTES count;
-    FOUR_BYTES offset;
+    FOUR_BYTES offset; //value
 } TAG;
 
 typedef struct tiff_ifd
 {
     FOUR_BYTES this_offset;
-    TWO_BYTES counter;
-    TAG * tag_head;
+//    TWO_BYTES counter;
+
+    FOUR_BYTES                  width;
+    FOUR_BYTES                  length;
+    struct bps                  bitsPsample;
+    TWO_BYTES                   compress;
+    TWO_BYTES                   pi;
+    FOUR_BYTES                  stripOffset;
+    TWO_BYTES                   samplesPP;
+    FOUR_BYTES                  rowsperS;
+    FOUR_BYTES                  stripByteC;
+    
+  //  TAG * tag_head;
     FOUR_BYTES next_offset;
 } IMAGE_FILE_DIRECTORY;
 
@@ -81,6 +99,9 @@ TIFF parse(const string const input);
 
 FOUR_BYTES get_firstIFD(const string const input);
 
+void parse_tag(TAG *, IMAGE_FILE_DIRECTORY * );
+
+
 /**
  * return value is 0 or another ifd's offset.
  **/
@@ -91,9 +112,13 @@ int getAtag(string, TAG *);
 
 
 
-
+/**
+ *  Read two bytes into TWO_BYTES type.
+ **/
 TWO_BYTES get_two(const string const order_reader);
+
 
 FOUR_BYTES get_four(const string const order_reader);
 
 
+int get_value(const string const input, const IMAGE_FILE_DIRECTORY * const search);

@@ -29,74 +29,116 @@ FOUR_BYTES get_firstIFD(const string const input)
 
 TIFF parse(string input)
 {
-    IMAGE_FILE_DIRECTORY boii;
-    if((boii.this_offset = get_firstIFD(input)).data == -1);
+    IMAGE_FILE_DIRECTORY first_ifd;
+    //Declaring default values.
+    first_ifd.compress.data = 1;
+    first_ifd.samplesPP.data = 1;
+
+
+    //end of declaring part.
+    if((first_ifd.this_offset = get_firstIFD(input)).data == -1);
     else
     {
-        get_tags(input + boii.this_offset.data, &boii);
+        get_tags(input + first_ifd.this_offset.data, &first_ifd);
+        get_value(input, &first_ifd);
     }
 }
 
 FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
 {
     
-    output->counter = get_two(input);
-    output->tag_head = (TAG *) malloc(sizeof(TAG) * output->counter.data);
-    
-    for(int i = 0; i < output->counter.data; ++i)
+    TWO_BYTES counter = get_two(input);
+    TAG empty;
+    for(int i = 0; i < counter.data; ++i)
     {
-        getAtag(input + (TAG_SIZE * i) + sizeof(TWO_BYTES), (output->tag_head + i));
+        getAtag(input + (TAG_SIZE * i) + sizeof(TWO_BYTES), &empty);
+        parse_tag(&empty, output);
+        if(empty.id.data == BitsPerSample)
         {
-            printf("|\t\t|%d\t|\tTag ID\t\t|\n",  (*(output->tag_head + i)).id.data);
-            printf("|\t\t|%d\t|\tData Type\t|\n", (*(output->tag_head + i)).type.data);
-            printf("|\t\t|%d\t|\tDaya Count\t|\n",(*(output->tag_head + i)).count.data);
-            printf("|\t\t|%d\t|\tData Offset\t|", (*(output->tag_head + i)).offset.data);
+            printf("|\t\t|%d\t|\tTag ID\t\t|\n",  (empty).id.data);
+            printf("|\t\t|%d\t|\tData Type\t|\n", (empty).type.data);
+            printf("|\t\t|%d\t|\tDaya Count\t|\n",(empty).count.data);
+            printf("|\t\t|%d\t|\tData Offset\t|", (empty).offset.data);
             printf("\n-------------------------------------------------\n");
-            sleep(1);        
+            for(int k = 0; k < empty.count.data; ++k)
+                printf("|\t\t|%d\t|\t target infos.\t|\n", ((get_two(input + empty.offset.data - output->this_offset.data))).data);
+            
+            sleep(1);
         }
     }
-    free(output->tag_head);
+    printf("%d\n", output->bitsPsample.data);
+    printf("%ld\n", file_size);
+    //free(output->tag_head);
 }
 
-int parse_tag(IMAGE_FILE_DIRECTORY * input, TIFF * output)
+void parse_tag(TAG * input, IMAGE_FILE_DIRECTORY * output)
 {
-    for(int i = 0; i < input->counter.data; ++i)
-    switch(input->counter.data)
+    switch(input->id.data)
     {
     case IMAGEWIDTH:
-
+        output->width = input->offset;
+        break;
     case IMAGELENGTH:
-
-    case COMPRESSION:
-
+        output->length = input->offset;
+        break;
+    case BitsPerSample:
+        output->bitsPsample.count = input->count;
+        output->bitsPsample.offset_p.data = input->offset.data;
+        break;
     case PhotometricInterpretation:
-
+        output->pi.data = input->offset.data;
+        break;
+    case RowsPerStrip:
+        output->rowsperS.data = input->offset.data;
+        break;
+    case SamplesPerPixel:
+        output->samplesPP.data = input->offset.data;
+        break;
     case StripOffsets:
-
+    //DEFAULT = 1 so working on grayscale or bilevel.
+        output->stripOffset.data = input->offset.data;
+        break;
     case StripByteCounts:
+        output->stripByteC.data = input->offset.data;
+        break;
 
+    /**
+     * KNOWN ISSUES
+     **/
+    case NEWIFD:
+    case DOC_NAME:
+        //DON'T CARE
+    case COMPRESSION:
+        //DON'T CARE BECAUSE: ONLY WORKING ON UNCOMPRESSED.
+        /*output->compress.data = input->offset.data;
+        break;*/
     case XResolution:
-
     case YResolution:
-
     case ResolutionUnit:
-
+    case Oriantetion:
+    case PlannerConf:
+        /**
+         * DECLARE DON'T CARES.
+         */
+        break;
     default:
         perror("Unknown tag ID");
         break;
     }
+    return;
 }
-/*
-int get_value(const string const input, const TAG * const search, void * const output)
+
+int get_value(const string const input, const IMAGE_FILE_DIRECTORY * const search)
 {
-    switch(search->type.data)
+    
+    for(int i = 0; i < 20; i+=4)
     {
-        
+        printf("%x\n", get_four(input + search->stripOffset.data + i).data);
     }
     return 0;
 }
 
-*/
+
 int getAtag(const string const input, TAG * next_node)
 {
     int ret_val = 0;
@@ -108,11 +150,13 @@ int getAtag(const string const input, TAG * next_node)
     case BYTE:
         break;
     case SHORT:
+        next_node->offset.data = get_two(input + (2 * sizeof(FOUR_BYTES))).data;
+        break;
+    case ASCII:
     case LONG:
         //CHECK THE COUNT OF VALUE
-        if(next_node->count.data == 1)
-            next_node->offset.data = get_two(input + (2 * sizeof(FOUR_BYTES))).data;
-        else    
+        //if(next_node->count.data == 1)
+        //else    
             next_node->offset = get_four(input + (2 * sizeof(FOUR_BYTES)));
         break;
     case RATIONAL:
