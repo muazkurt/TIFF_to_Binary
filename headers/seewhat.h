@@ -5,81 +5,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "tags.h"
-#include "types.h"
-
-
-
-typedef char * string;
-
-struct bps
-{
-    FOUR_BYTES count;
-    FOUR_BYTES offset_p;
-};
-
-
-
-
-typedef char ONE_BYTE;
-
-typedef union twoB
-{
-    unsigned short data;
-    ONE_BYTE field [2];
-} TWO_BYTES;
-
-typedef union fourB
-{
-    unsigned int data;
-    ONE_BYTE field [4];
-} FOUR_BYTES;
-
-typedef union eightB
-{
-    unsigned long long data;
-    ONE_BYTE field [8];
-} EIGHT_BYTES;
-
-typedef struct tiff_head
-{
-    ONE_BYTE id_one;
-    ONE_BYTE id_two;
-    TWO_BYTES version;
-    FOUR_BYTES IFD_offset;
-} HEADER;
-
-typedef struct ifd_tag
-{
-    TWO_BYTES id;
-    TWO_BYTES type;
-    FOUR_BYTES count;
-    FOUR_BYTES offset; //value
-} TAG;
-
-typedef struct tiff_ifd
-{
-    FOUR_BYTES this_offset;
-//    TWO_BYTES counter;
-
-    FOUR_BYTES                  width;
-    FOUR_BYTES                  length;
-    struct bps                  bitsPsample;
-    TWO_BYTES                   compress;
-    TWO_BYTES                   pi;
-    FOUR_BYTES                  stripOffset;
-    TWO_BYTES                   samplesPP;
-    FOUR_BYTES                  rowsperS;
-    FOUR_BYTES                  stripByteC;
-    
-  //  TAG * tag_head;
-    FOUR_BYTES next_offset;
-} IMAGE_FILE_DIRECTORY;
-
-typedef struct tiff
-{
-    IMAGE_FILE_DIRECTORY _ifd;
-    
-} TIFF;
 
 
 /**
@@ -121,4 +46,4 @@ TWO_BYTES get_two(const string const order_reader);
 FOUR_BYTES get_four(const string const order_reader);
 
 
-int get_value(const string const input, const IMAGE_FILE_DIRECTORY * const search);
+int get_value(const string const input, IMAGE_FILE_DIRECTORY * const search);

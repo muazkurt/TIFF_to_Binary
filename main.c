@@ -4,16 +4,23 @@ int main(int argc, char ** argv)
 {
     if(argc == 1)
     {
-        printf("Usage: %s <filename>", *(argv + 1));
+        printf("Usage: %s <filename>\n", *(argv + 1));
         return -1;
     }
     int fd;
-    string temp;
-    parse(temp = get_all(fd = open(argv[1], O_RDONLY)));
-  
-    close(fd);
-    
-    free(temp);
-    temp = NULL;
+    string file_input;
+    if((fd = open(argv[1], O_RDONLY)) > 0)
+    {
+        file_input = get_all(fd);
+        if(parse != NULL)
+        {
+            parse(file_input);
+            free(file_input);
+            file_input = NULL;
+        }
+        close(fd);
+    }
+    else
+        fprintf(stderr, "No such file.\n");
     return 0;
 }

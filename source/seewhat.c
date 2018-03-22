@@ -40,7 +40,15 @@ TIFF parse(string input)
     else
     {
         get_tags(input + first_ifd.this_offset.data, &first_ifd);
-        get_value(input, &first_ifd);
+        if(first_ifd.bitsPsample.count.data == 1 &&  first_ifd.compress.data == 1 &&  first_ifd.pi.data < 2)
+        {
+            printf("Image Width: %d\n", first_ifd.width.data);
+            printf("Image Length: %d\n", first_ifd.length.data);
+            printf("Byte format: %s\n", (byte_order == 8 ? "Motorola" : "Intel"));            
+            get_value(input, &first_ifd);
+        }
+        else
+            fprintf(stderr, "Unexpected file format.");
     }
 }
 
@@ -53,22 +61,7 @@ FOUR_BYTES get_tags(const string const input, IMAGE_FILE_DIRECTORY * output)
     {
         getAtag(input + (TAG_SIZE * i) + sizeof(TWO_BYTES), &empty);
         parse_tag(&empty, output);
-        if(empty.id.data == BitsPerSample)
-        {
-            printf("|\t\t|%d\t|\tTag ID\t\t|\n",  (empty).id.data);
-            printf("|\t\t|%d\t|\tData Type\t|\n", (empty).type.data);
-            printf("|\t\t|%d\t|\tDaya Count\t|\n",(empty).count.data);
-            printf("|\t\t|%d\t|\tData Offset\t|", (empty).offset.data);
-            printf("\n-------------------------------------------------\n");
-            for(int k = 0; k < empty.count.data; ++k)
-                printf("|\t\t|%d\t|\t target infos.\t|\n", ((get_two(input + empty.offset.data - output->this_offset.data))).data);
-            
-            sleep(1);
-        }
     }
-    printf("%d\n", output->bitsPsample.data);
-    printf("%ld\n", file_size);
-    //free(output->tag_head);
 }
 
 void parse_tag(TAG * input, IMAGE_FILE_DIRECTORY * output)
@@ -79,7 +72,7 @@ void parse_tag(TAG * input, IMAGE_FILE_DIRECTORY * output)
         output->width = input->offset;
         break;
     case IMAGELENGTH:
-        output->length = input->offset;
+        output->length = input->offset;       
         break;
     case BitsPerSample:
         output->bitsPsample.count = input->count;
@@ -110,33 +103,59 @@ void parse_tag(TAG * input, IMAGE_FILE_DIRECTORY * output)
         //DON'T CARE
     case COMPRESSION:
         //DON'T CARE BECAUSE: ONLY WORKING ON UNCOMPRESSED.
-        /*output->compress.data = input->offset.data;
-        break;*/
     case XResolution:
     case YResolution:
     case ResolutionUnit:
     case Oriantetion:
+    case 270://IMAGE DESCRIPTION.
     case PlannerConf:
         /**
          * DECLARE DON'T CARES.
          */
         break;
     default:
-        perror("Unknown tag ID");
+        #ifdef WATCH
+            fprintf(stderr, "Unknown tag ID.\n");
+        #endif
         break;
     }
     return;
 }
 
-int get_value(const string const input, const IMAGE_FILE_DIRECTORY * const search)
+int get_value(const string const input, IMAGE_FILE_DIRECTORY * const search)
 {
-    
-    for(int i = 0; i < 20; i+=4)
+    if(search->bitsPsample.count.data > 1)
+        search->bitsPsample.offset_p.data = get_two(input + search->bitsPsample.offset_p.data).data;
+    else if(search->bitsPsample.offset_p.data == 1)
+        search->bitsPsample.offset_p.data = 8; 
+    TWO_BYTES temp;
+    for(int i = 0; i < search->length.data; i+=1)
     {
-        printf("%x\n", get_four(input + search->stripOffset.data + i).data);
+        for(int j = 0; j < search->width.data; j += 1)
+        {
+            temp.data = 0;            
+            switch(search->bitsPsample.offset_p.data)
+            {
+            case 4:
+                fprintf(stderr, "Unexpected image bit order\n");
+                break;
+            case 8:
+            default:
+                temp.field[0] = *(input + search->stripOffset.data + (i * search->width.data) + j) & 1;            
+                if(search->pi.data == 0)
+                    temp.field[0] != temp.field[0];
+                break;
+            }
+
+            printf("%d ", temp.data);
+        }
+        printf("\n");
     }
     return 0;
 }
+
+
+
 
 
 int getAtag(const string const input, TAG * next_node)
