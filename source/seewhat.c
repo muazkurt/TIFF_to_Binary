@@ -1,6 +1,7 @@
 #include "../headers/seewhat.h"
 string get_all(int fp)
-{
+{ 
+    off_t file_size = 0;    
     string file_info = NULL;
     if(((file_size = lseek(fp, 0, SEEK_END)) == -1) || (lseek(fp, 0, SEEK_SET) == -1))
         perror("Error to get filesize");
@@ -27,7 +28,7 @@ FOUR_BYTES get_firstIFD(const string const input)
 }
 
 
-TIFF parse(string input)
+void parse(string input)
 {
     IMAGE_FILE_DIRECTORY first_ifd;
     //Declaring default values.
@@ -48,7 +49,7 @@ TIFF parse(string input)
             get_value(input, &first_ifd);
         }
         else
-            fprintf(stderr, "Unexpected file format.");
+            fprintf(stderr, "Unexpected file format.\n");
     }
 }
 
